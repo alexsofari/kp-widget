@@ -2,19 +2,30 @@ name: Update Kinopoisk
 on:
   schedule: [{cron: "0 5 * * *"}]     # каждый день в 08:00 МСК
   workflow_dispatch:
-permissions: {contents: write}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
-  update:
+  build-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install requests beautifulsoup4
-      - run: python kp_parser.py --out docs/kp.json
-      - run: |
-          git config user.name  "kp-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add docs/kp.json
-          git commit -m "update kp.json" || echo "no changes"
-          git push
+      - run: python kp_parser.py --out site/kp.json
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: {path: site}
+      - id: deployment
+        uses: actions/deploy-pages@v4
