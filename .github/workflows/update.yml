@@ -1,6 +1,6 @@
 name: Update Kinopoisk
 on:
-  schedule: [{cron: "0 5 * * *"}]     # каждый день в 08:00 МСК
+  schedule: [{cron: "0 5 * * *"}]
   workflow_dispatch:
 
 permissions:
@@ -10,22 +10,29 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build-deploy:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: {python-version: "3.12"}
+      - run: pip install requests beautifulsoup4
+      - run: python kp_parser.py --out site/kp.json
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with: {path: site}
+
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: {python-version: "3.12"}
-      - run: pip install requests beautifulsoup4
-      - run: python kp_parser.py --out site/kp.json
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with: {path: site}
+      - name: Страховка от гонки артефактов (можно убрать)
+        run: sleep 10
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
